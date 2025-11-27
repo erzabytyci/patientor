@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Box, Typography, CircularProgress, Paper, Button } from "@mui/material";
+import {
+    Box, Typography, CircularProgress, Paper, Button,
+    FormControl, InputLabel, Select, MenuItem, OutlinedInput,
+    Checkbox, ListItemText
+} from "@mui/material";
 
 import patientsService from "../services/patients";
 import { Patient, Gender, Diagnosis } from "../types";
@@ -21,6 +25,7 @@ const PatientPage = ({ diagnoses }: Props) => {
     const [showForm, setShowForm] = useState(false);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [entryType, setEntryType] = useState<EntryType>("HealthCheck");
+    const [selectedDiagnosisCodes, setSelectedDiagnosisCodes] = useState<string[]>([]);
 
 
     useEffect(() => {
@@ -55,6 +60,11 @@ const PatientPage = ({ diagnoses }: Props) => {
             default:
                 return "";
         }
+    };
+
+    const handleDiagnosisChange = (event: any) => {
+        const { value } = event.target;
+        setSelectedDiagnosisCodes(typeof value === "string" ? value.split(",") : value);
     };
 
     if (loading) {
@@ -103,7 +113,7 @@ const PatientPage = ({ diagnoses }: Props) => {
 
                     {showForm && (
                         <Box mt={2} p={2} border="1px dashed gray">
-                            <Typography variant="h6">New HealthCheck entry</Typography>
+                            <Typography variant="h6">New entry</Typography>
 
                             <form
                                 onSubmit={async (e) => {
@@ -115,19 +125,13 @@ const PatientPage = ({ diagnoses }: Props) => {
                                         description: form.description.value,
                                         date: form.date.value,
                                         specialist: form.specialist.value,
-                                        diagnosisCodes: form.diagnosisCodes.value
-                                            ? form.diagnosisCodes.value
-                                                .split(",")
-                                                .map((s: string) => s.trim())
-                                            : []
+                                        diagnosisCodes: selectedDiagnosisCodes
                                     };
 
                                     let newEntry: any = { ...baseEntry };
 
                                     if (entryType === "HealthCheck") {
-                                        newEntry.healthCheckRating = Number(
-                                            form.healthCheckRating.value
-                                        );
+                                        newEntry.healthCheckRating = Number(form.healthCheckRating.value);
                                     }
 
                                     if (entryType === "Hospital") {
@@ -139,10 +143,7 @@ const PatientPage = ({ diagnoses }: Props) => {
 
                                     if (entryType === "OccupationalHealthcare") {
                                         newEntry.employerName = form.employerName.value;
-                                        if (
-                                            form.sickLeaveStart.value &&
-                                            form.sickLeaveEnd.value
-                                        ) {
+                                        if (form.sickLeaveStart.value && form.sickLeaveEnd.value) {
                                             newEntry.sickLeave = {
                                                 startDate: form.sickLeaveStart.value,
                                                 endDate: form.sickLeaveEnd.value
@@ -151,110 +152,169 @@ const PatientPage = ({ diagnoses }: Props) => {
                                     }
 
                                     try {
-                                        const added = await patientsService.addEntry(
-                                            patient.id,
-                                            newEntry
-                                        );
+                                        const added = await patientsService.addEntry(patient.id, newEntry);
                                         setPatient({
                                             ...patient,
                                             entries: patient.entries.concat(added)
                                         });
                                         setShowForm(false);
                                         setErrorMessage(null);
+                                        setSelectedDiagnosisCodes([]);
                                     } catch (error: any) {
                                         console.error(error);
                                         setErrorMessage(error.response?.data || "Unknown error");
                                     }
                                 }}
                             >
-                                {/* Type selector */}
-                                <label>
-                                    Entry type:
-                                    <select
-                                        name="type"
-                                        value={entryType}
-                                        onChange={(e) =>
-                                            setEntryType(e.target.value as EntryType)
-                                        }
-                                        style={{ width: "100%", margin: "4px 0" }}
-                                    >
-                                        <option value="HealthCheck">HealthCheck</option>
-                                        <option value="Hospital">Hospital</option>
-                                        <option value="OccupationalHealthcare">
-                                            OccupationalHealthcare
-                                        </option>
-                                    </select>
-                                </label>
 
-                                <input
-                                    name="description"
-                                    placeholder="Description"
-                                    style={{ width: "100%", margin: "4px 0" }}
-                                />
-                                <input
-                                    name="date"
-                                    placeholder="2023-01-01"
-                                    style={{ width: "100%", margin: "4px 0" }}
-                                />
-                                <input
-                                    name="specialist"
-                                    placeholder="Specialist"
-                                    style={{ width: "100%", margin: "4px 0" }}
-                                />
-                                <input
-                                    name="diagnosisCodes"
-                                    placeholder="Z57.1, M51.2"
-                                    style={{ width: "100%", margin: "4px 0" }}
-                                />
+                                <FormControl fullWidth margin="dense" size="small">
+                                    <InputLabel id="entry-type-label">Entry type</InputLabel>
+                                    <Select
+                                        labelId="entry-type-label"
+                                        label="Entry type"
+                                        value={entryType}
+                                        onChange={(e) => setEntryType(e.target.value as EntryType)}
+                                    >
+                                        <MenuItem value="HealthCheck">HealthCheck</MenuItem>
+                                        <MenuItem value="Hospital">Hospital</MenuItem>
+                                        <MenuItem value="OccupationalHealthcare">
+                                            OccupationalHealthcare
+                                        </MenuItem>
+                                    </Select>
+                                </FormControl>
+
+
+                                <Box mt={1}>
+                                    <Typography variant="body2">Description</Typography>
+                                    <input
+                                        name="description"
+                                        style={{ width: "100%", margin: "4px 0" }}
+                                    />
+                                </Box>
+
+                                <Box mt={1}>
+                                    <Typography variant="body2">Entry date</Typography>
+                                    <input
+                                        type="date"
+                                        name="date"
+                                        style={{ width: "100%", margin: "4px 0" }}
+                                    />
+                                </Box>
+
+                                <Box mt={1}>
+                                    <Typography variant="body2">Specialist</Typography>
+                                    <input
+                                        name="specialist"
+                                        style={{ width: "100%", margin: "4px 0" }}
+                                    />
+                                </Box>
+
+
+                                <Box mt={1}>
+                                    <Typography variant="body2">Diagnosis codes</Typography>
+                                    <FormControl fullWidth margin="dense" size="small">
+                                        <InputLabel id="diagnosis-label">Diagnosis codes</InputLabel>
+                                        <Select
+                                            labelId="diagnosis-label"
+                                            multiple
+                                            value={selectedDiagnosisCodes}
+                                            onChange={handleDiagnosisChange}
+                                            input={<OutlinedInput label="Diagnosis codes" />}
+                                            renderValue={(selected) => (selected as string[]).join(", ")}
+                                        >
+                                            {diagnoses.map((d) => (
+                                                <MenuItem key={d.code} value={d.code}>
+                                                    <Checkbox
+                                                        checked={selectedDiagnosisCodes.indexOf(d.code) > -1}
+                                                    />
+                                                    <ListItemText primary={`${d.code} ${d.name}`} />
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Box>
 
 
                                 {entryType === "HealthCheck" && (
-                                    <input
-                                        name="healthCheckRating"
-                                        placeholder="HealthCheck rating (0-3)"
-                                        style={{ width: "100%", margin: "4px 0" }}
-                                    />
+                                    <Box mt={1}>
+                                        <Typography variant="body2">HealthCheck rating (0–3)</Typography>
+                                        <select
+                                            name="healthCheckRating"
+                                            style={{ width: "100%", margin: "4px 0" }}
+                                            defaultValue="0"
+                                        >
+                                            <option value="0">0 - Healthy</option>
+                                            <option value="1">1 - Low risk</option>
+                                            <option value="2">2 - High risk</option>
+                                            <option value="3">3 - Critical risk</option>
+                                        </select>
+                                    </Box>
                                 )}
 
 
                                 {entryType === "Hospital" && (
                                     <>
-                                        <input
-                                            name="dischargeDate"
-                                            placeholder="Discharge date (2023-01-10)"
-                                            style={{ width: "100%", margin: "4px 0" }}
-                                        />
-                                        <input
-                                            name="dischargeCriteria"
-                                            placeholder="Discharge criteria"
-                                            style={{ width: "100%", margin: "4px 0" }}
-                                        />
+                                        <Box mt={1}>
+                                            <Typography variant="body2">
+                                                Discharge date
+                                            </Typography>
+                                            <input
+                                                type="date"
+                                                name="dischargeDate"
+                                                style={{ width: "100%", margin: "4px 0" }}
+                                            />
+                                        </Box>
+                                        <Box mt={1}>
+                                            <Typography variant="body2">Discharge criteria</Typography>
+                                            <input
+                                                name="dischargeCriteria"
+                                                style={{ width: "100%", margin: "4px 0" }}
+                                            />
+                                        </Box>
                                     </>
                                 )}
 
 
                                 {entryType === "OccupationalHealthcare" && (
                                     <>
-                                        <input
-                                            name="employerName"
-                                            placeholder="Employer name"
-                                            style={{ width: "100%", margin: "4px 0" }}
-                                        />
-                                        <input
-                                            name="sickLeaveStart"
-                                            placeholder="Sick leave start date (optional)"
-                                            style={{ width: "100%", margin: "4px 0" }}
-                                        />
-                                        <input
-                                            name="sickLeaveEnd"
-                                            placeholder="Sick leave end date (optional)"
-                                            style={{ width: "100%", margin: "4px 0" }}
-                                        />
+                                        <Box mt={1}>
+                                            <Typography variant="body2">Employer name</Typography>
+                                            <input
+                                                name="employerName"
+                                                style={{ width: "100%", margin: "4px 0" }}
+                                            />
+                                        </Box>
+
+                                        <Box mt={1}>
+                                            <Typography variant="body2">
+                                                Sick leave start date
+                                            </Typography>
+                                            <input
+                                                type="date"
+                                                name="sickLeaveStart"
+                                                style={{ width: "100%", margin: "4px 0" }}
+                                            />
+                                        </Box>
+
+                                        <Box mt={1}>
+                                            <Typography variant="body2">
+                                                Sick leave end date
+                                            </Typography>
+                                            <input
+                                                type="date"
+                                                name="sickLeaveEnd"
+                                                style={{ width: "100%", margin: "4px 0" }}
+                                            />
+                                        </Box>
                                     </>
                                 )}
 
                                 <Box mt={2} display="flex" gap={2}>
-                                    <Button variant="contained" color="secondary" onClick={() => setShowForm(false)}>
+                                    <Button
+                                        variant="contained"
+                                        color="secondary"
+                                        onClick={() => setShowForm(false)}
+                                    >
                                         Cancel
                                     </Button>
                                     <Button type="submit" variant="contained">
